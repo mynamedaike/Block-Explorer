@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <script src="https://cdn.staticfile.org/angular.js/1.4.6/angular.min.js"></script>
+    </head>
+    <body>
+        <div ng-app="myApp" ng-controller="getData">
+            <strong>1、当前币价、交易总数、账户总数</strong> <br><br>
+            {{ coinPrice + ' ' + txNum + ' ' + accNum}} <br><br>
+            <strong>2、过去10天交易统计</strong> <br>
+            <ul>
+                <li ng-repeat="dayStat in txStat">
+                    {{ dayStat.date + ' ' + dayStat.txNum }}
+                </li>
+            </ul>
+            <strong>3、区块列表</strong> <br><br>
+            {{ totalBlockNum }}//区块总数（区块高度）
+            <ul>
+                <li ng-repeat="block in blocks">
+                    {{ block.Number + ' ' + block.Hash }}
+                </li>
+            </ul>
+            <strong>4、交易列表</strong> <br><br>
+            {{ totalTxNum }}//交易总数
+            <ul>
+                <li ng-repeat="tx in transactions">
+                    {{ tx.BlockNum + ' ' + tx.TxHash }}
+                </li>
+            </ul>
+            <strong>5、账户列表</strong> <br><br>
+            {{ totalAccNum }}//账户总数
+            <ul>
+                <li ng-repeat="acc in accounts">
+                    {{ acc.Balance + ' ' + acc.Percentage }}
+                </li>
+            </ul>
+            <strong>6、根据区块高度查询指定区块</strong> <br><br>
+            {{ block1.Number + ' ' + block1.Hash }} <br><br>
+            <strong>7、根据区块哈希查询指定区块</strong> <br><br>
+            {{ block2.Number + ' ' + block2.Hash }} <br><br>
+            <strong>8、根据交易哈希查询指定交易</strong> <br><br>
+            {{ transaction.BlockNum + ' ' + transaction.TxHash }} <br><br>
+            <strong>9、根据账户地址查询指定账户</strong> <br><br>
+            {{ acc.Balance + ' ' + acc.Percentage + ' ' + acc.TxNum }}
+            <ul>
+                <li ng-repeat="tx in accTransactions">
+                    {{ tx.BlockNum + ' ' + tx.TxHash }}
+                </li>
+            </ul>
+        </div>
+    </body>
+    <script>
+        var app = angular.module("myApp", []);
+        app.controller("getData", function($scope, $http) {
+            $http.get("http://localhost/api/coinPrice")
+                 .success(function(response) {
+                    console.log("success");
+                    $scope.coinPrice = response.coinPrice;
+                    $scope.txNum = response.txNum;
+                    $scope.accNum = response.accNum;
+                 })
+            $http.get("http://localhost/api/txStat/10")
+                 .success(function(response) {
+                    console.log("success");
+                    $scope.txStat = angular.fromJson(response.txStat);
+                 })
+            $http.get("http://localhost/api/blocks?pageNum=1&pageSize=10")
+                 .success(function(response) {
+                    console.log("success");
+                    $scope.totalBlockNum = response.totalNum;
+                    $scope.blocks = response.pageList;                      
+                 })
+            $http.get("http://localhost/api/transactions?pageNum=2&pageSize=10")
+                 .success(function(response) {
+                    console.log("success");
+                    $scope.totalTxNum = response.totalNum;
+                    $scope.transactions = response.pageList;                      
+                 })
+            $http.get("http://localhost/api/accounts?pageNum=1&pageSize=10")
+                 .success(function(response) {
+                    console.log("success");
+                    $scope.totalAccNum = response.totalNum;
+                    $scope.accounts = response.pageList;                      
+                 })
+            $http.get("http://localhost/api/block/100")
+                 .success(function(response) {
+                    console.log("success");
+                    $scope.block1 = response.block;
+                 })
+            $http.get("http://localhost/api/block/0xabcd862302b1a4fc987d84b461cbb1fdb3806219b82fb30c43f5a22e622a1dd1")
+                 .success(function(response) {
+                    console.log("success");
+                    $scope.block2 = response.block;
+                 })
+            $http.get("http://localhost/api/transaction/0x6abba45f8c26810e2268756332cb4e3c66591159a52d26087e19b1fea47b93f8")
+                 .success(function(response) {
+                    console.log("success");
+                    $scope.transaction = response.tx;
+                 })
+            $http.get("http://localhost/api/account/0x14f5b5d9b330eb8fa2dd653eaca99a6f11420d23?pageNum=1&pageSize=10")
+                 .success(function(response) {
+                    console.log("success");
+                    $scope.acc = response.acc;
+                    $scope.accTransactions = response.pageList;
+                 })
+        });
+    </script>
+</html>
