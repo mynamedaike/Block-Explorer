@@ -6,14 +6,21 @@ import os
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'NUChain.settings')
 
-app = Celery('NUChainExplorer')
+app = Celery('NUChainExplorer', broker='redis://localhost')
+
+app.conf.ONCE = {
+    'backend': 'celery_once.backends.Redis',
+    'settings': {
+        'url': 'redis://localhost:6379/0',
+        'default_timeout': 60 * 60
+    }
+}
 
 CELERY_IMPORTS = (
     'NUChainExplorer.tasks',
 )
 
 app.conf.update(
-    BROKER_URL = 'redis://127.0.0.1:6379/2',
     
     CELERYBEAT_SCHEDULE = {
         'writeDataToDB': {
@@ -23,5 +30,4 @@ app.conf.update(
     }
 )
 
-#app.autodiscover_tasks(settings.INSTALLED_APPS)
 app.autodiscover_tasks()

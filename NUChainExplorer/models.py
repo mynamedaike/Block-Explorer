@@ -80,21 +80,29 @@ class Transactions(models.Model):
     objects = TransactionManager()
 
 class AccountManager(models.Manager):
-    def addOne(self, address, balance, percentage, txNum, updatedTime, updatedFromBlock):
-        self.create(Address = address, Balance = balance, Percentage = percentage, TxNum = txNum, UpdatedTime = updatedTime, UpdatedFromBlock = updatedFromBlock)
-    
-    def updateOne(self, address, balance, percentage, txNum, updatedTime, updatedFromBlock):
-        self.filter(Address__exact = address).update(Balance = balance, Percentage = percentage, TxNum = txNum, UpdatedTime = updatedTime, UpdatedFromBlock = updatedFromBlock)
+    def addOne(self, address, balance, percentage, updatedTime, updatedFromBlock):
+        self.create(Address = address, Balance = balance, Percentage = percentage, UpdatedTime = updatedTime, UpdatedFromBlock = updatedFromBlock)
         
+    def updateOne(self, address, balance, updatedTime, updatedFromBlock):
+        self.filter(Address__exact = address).update(Balance = balance, UpdatedTime = updatedTime, UpdatedFromBlock = updatedFromBlock)
+    
     def updateAllPercent(self, balanceSum):
         self.all().update(Percentage = models.F('Balance') / balanceSum)
     
     def getAll(self):
-        results = self.all()
+        results = self.extra(
+            select = {
+                'TxNum': 'select ifnull(count(*), 0) from NUChainExplorer_transactions Txs where Txs.From = NUChainExplorer_accounts.Address or Txs.To = NUChainExplorer_accounts.Address'
+            },
+        ).values('Address', 'Balance', 'Percentage', 'TxNum').order_by('-Balance')
         return results
     
     def getOne(self, address):
-        result = self.filter(Address__exact = address)
+        result = self.filter(Address__exact = address).extra(
+            select = {
+                'TxNum': 'select ifnull(count(*), 0) from NUChainExplorer_transactions Txs where Txs.From = NUChainExplorer_accounts.Address or Txs.To = NUChainExplorer_accounts.Address'
+            },
+        ).values('Address', 'Balance', 'Percentage', 'TxNum', 'UpdatedFromBlock')
         return result
     
     def getLatestNRows(self, Num):
@@ -109,10 +117,24 @@ class Accounts(models.Model):
     Address = models.CharField(max_length = 45, unique = True)
     Balance = models.DecimalField(max_digits = 64, decimal_places = 6)
     Percentage = models.DecimalField(max_digits = 11, decimal_places = 10)
-    TxNum = models.IntegerField()
     UpdatedTime = models.DateTimeField()
     UpdatedFromBlock = models.IntegerField()
     
     objects = AccountManager()
+    
+class UntilBlockManager(models.Manager): 
+    def addOne(self, number):
+        self.create(Number = number)
+    
+    def updateOne(self, number):
+        self.filter(id = 1).update(Number = number)
+    
+    def getOne(self):
+        result = self.filter(id = 1)
+        return result    
+    
+class UntilBlock(models.Model):
+    Number = models.IntegerField()
+    objects = UntilBlockManager()
     
     

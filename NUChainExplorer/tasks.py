@@ -1,12 +1,21 @@
 from __future__ import absolute_import, unicode_literals
 from web3 import Web3
 from decimal import Decimal
+from django.utils.timezone import make_aware
+from datetime import datetime
+from celery_once import QueueOnce
+from celery_once import AlreadyQueued
 import time
 
 from NUChain.celery import app
 from NUChainExplorer.models import Blocks
 from NUChainExplorer.models import Transactions
 from NUChainExplorer.models import Accounts
+from NUChainExplorer.models import UntilBlock
+
+web3Connector = Web3(Web3.HTTPProvider('http://47.75.149.85:8545'))
+#web3Connector = Web3(Web3.HTTPProvider('http://47.90.98.227:8545'))
+#web3Connector = Web3(Web3.HTTPProvider('http://localhost:8545'))
 
 def getAllTransactionsFromBlock(web3Connector, blockNumOrHash):
     transactions = []
@@ -24,46 +33,48 @@ def getAllAddressesFromBlock(web3Connector, blockNumOrHash):
         addresses.append(tx['from'])
         addresses.append(tx.to)
     return addresses
-    
 
-def getBlockInfo(web3Connector, blockNumOrHash):
+def getBlockModel(web3Connector, blockNumOrHash):
     block = web3Connector.eth.getBlock(blockNumOrHash)
     transactions = getAllTransactionsFromBlock(web3Connector, blockNumOrHash)
-    blockInfo = {}
-    blockInfo['number'] = block.number
-    blockInfo['hash'] = block.hash.hex()
-    blockInfo['timestamp'] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(block.timestamp))
-    blockInfo['miner'] = block.miner
-    blockInfo['txNum'] = web3Connector.eth.getBlockTransactionCount(blockNumOrHash)
-    blockInfo['size'] = block.size
-    blockInfo['nonce'] = block.nonce.hex()
-    blockInfo['gasUsed'] = block.gasUsed
-    blockInfo['gasLimit'] = block.gasLimit
-    blockInfo['avgGasPrice'] = 0
-    blockInfo['difficulty'] = block.difficulty
-    blockInfo['totalDifficulty'] = block.totalDifficulty
-    blockInfo['reward'] = 0
-    blockInfo['uncleReward'] = 0
-    blockInfo['extraData'] = block.extraData.hex()
+    
+    number = block.number
+    blockHash = block.hash.hex()
+    timestamp = make_aware(datetime.utcfromtimestamp(block.timestamp))
+    miner = block.miner
+    txNum = web3Connector.eth.getBlockTransactionCount(blockNumOrHash)
+    size = block.size
+    nonce = block.nonce.hex()
+    gasUsed = block.gasUsed
+    gasLimit = block.gasLimit
+    avgGasPrice = 0
+    difficulty = block.difficulty
+    totalDifficulty = block.totalDifficulty
+    reward = 0
+    uncleReward = 0
+    extraData = block.extraData.hex()
     txFees = 0
+    
     for tx in transactions:
         txFees += Decimal(tx.gas) * Decimal(tx.gasPrice) 
-    blockInfo['reward'] = 3 + txFees / Decimal(1000000000000000000) + Decimal(3/32 * len(block.uncles)) #to be changed
+    reward = 5 + txFees / Decimal(1000000000000000000) + Decimal(5/32 * len(block.uncles)) #to be changed
     
     for uncle in block.uncles:
-        blockInfo['uncleReward'] += (8 + web3Connector.eth.getBlock(uncle.hex()).number - block.number) * 3/8
+        uncleReward += (8 + web3Connector.eth.getBlock(uncle.hex()).number - block.number) * 5/8
         
-    if blockInfo['gasUsed'] != 0:
-        blockInfo['avgGasPrice'] = txFees / blockInfo['gasUsed'] / Decimal(1000000000)
+    if gasUsed != 0:
+        avgGasPrice = txFees / gasUsed / Decimal(1000000000)
         
-    return blockInfo
+    blockModel = Blocks(Number = number, Hash = blockHash, Timestamp = timestamp, Miner = miner, TxNum = txNum, Size = size, Nonce = nonce, GasUsed = gasUsed, GasLimit = gasLimit, AvgGasPrice = avgGasPrice, Difficulty = difficulty, TotalDifficulty = totalDifficulty, Reward = reward, UncleReward = uncleReward, ExtraData = extraData)
+    
+    return blockModel
 
 def getTxInfo(web3Connector, txObject):
     txInfo = {}
     timestamp = web3Connector.eth.getBlock(txObject.blockNumber).timestamp
     txInfo['txHash'] = txObject.hash.hex()
     txInfo['blockNumber'] = txObject.blockNumber
-    txInfo['timestamp'] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(timestamp))
+    txInfo['timestamp'] = make_aware(datetime.utcfromtimestamp(timestamp))
     txInfo['status'] = '暂时没有这个参数'
     txInfo['from'] = txObject['from']
     txInfo['to'] = txObject.to
@@ -80,13 +91,15 @@ def getAccInfo(web3Connector, address, blockNum):
     accInfo['address'] = address
     accInfo['balance'] = web3Connector.eth.getBalance(address)
     accInfo['percentage'] = 0
-    accInfo['txNum'] = Transactions.objects.getAllByAddr(address).count()
-    accInfo['updatedTime'] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(int(time.time())))
+    accInfo['updatedTime'] = make_aware(datetime.utcnow())
     accInfo['updatedFromBlock'] = blockNum
     
     return accInfo
 
-def writeBlocksToDB(web3Connector, currentBlockNum):
+#@app.task(name = 'writeBlocksToDB', base = QueueOnce, once = {'graceful': True})
+def writeBlocksToDB():
+    print('[Blocks] Start writing blocks to the database!')
+    currentBlockNum = web3Connector.eth.blockNumber
     latestBlock = None
     blocks = []
     count = 0
@@ -102,33 +115,43 @@ def writeBlocksToDB(web3Connector, currentBlockNum):
         startIndex = None
         
     if startIndex != None:
-        for blockIndex in range(startIndex, currentBlockNum + 1):
-            blocks.append(getBlockInfo(web3Connector, blockIndex))
-         
-        for block in blocks:
-            Blocks.objects.addOne(block['number'], block['hash'], block['timestamp'], block['miner'], block['txNum'], block['size'], block['nonce'], block['gasUsed'], block['gasLimit'], block['avgGasPrice'], block['difficulty'], block['totalDifficulty'], block['reward'], block['uncleReward'], block['extraData'])
-            count += 1
+        if startIndex  <= currentBlockNum - 99:
+            endIndex = startIndex + 99
+        else:
+            endIndex = currentBlockNum
+            
+        for blockIndex in range(startIndex, endIndex + 1):
+            blocks.append(getBlockModel(web3Connector, blockIndex))
+            
+        Blocks.objects.bulk_create(blocks)    
         
-        print('Inserted ' + str(count) + ' blocks successfully!')
+        print('[Blocks] Inserted ' + str(len(blocks)) + ' blocks successfully from Block ' + str(startIndex) + ' to Block ' + str(endIndex) + '!')
+    else:
+        print('[Blocks] The latest block is already in the database!')
     
-def writeTxsToDB(web3Connector, currentBlockNum):
+    print('[Blocks] Finish writing blocks to the database!')
+
+#@app.task(name = 'writeTxsToDB', base = QueueOnce, once = {'graceful': True})    
+def writeTxsToDB():
+    print('[Transactions] Start writing transactions to the database!')
+    currentBlockNum = web3Connector.eth.blockNumber
     latestTx = None
     transactions = []
     count = 0
-    
-    if Transactions.objects.getLatestNRows(1):
-        latestTx = Transactions.objects.getLatestNRows(1)[0]
         
-    if latestTx and latestTx.BlockNum < currentBlockNum:
-        startIndex = latestTx.BlockNum
-    elif latestTx == None:
-        startIndex = 1
+    if UntilBlock.objects.getOne():
+        startIndex = UntilBlock.objects.getOne()[0].Number
     else:
-        startIndex = None
+        startIndex = 1
+        UntilBlock.objects.addOne(1)  
     
-    if startIndex != None:    
-        for blockIndex in range(startIndex, currentBlockNum + 1):
-            transactions += getAllTransactionsFromBlock(web3Connector, blockIndex)
+    if startIndex  <= currentBlockNum - 99:
+        endIndex = startIndex + 99
+    else:
+        endIndex = currentBlockNum
+    
+    for blockIndex in range(startIndex, endIndex + 1):
+        transactions += getAllTransactionsFromBlock(web3Connector, blockIndex)
     
     for tx in transactions:
         if tx.blockNumber == startIndex:
@@ -141,48 +164,64 @@ def writeTxsToDB(web3Connector, currentBlockNum):
             txInfo = getTxInfo(web3Connector, tx)
             Transactions.objects.addOne(txInfo['txHash'], txInfo['blockNumber'], txInfo['timestamp'], txInfo['status'], txInfo['from'], txInfo['to'], txInfo['value'], txInfo['gasUsed'], txInfo['gasLimit'], txInfo['gasPrice'], txInfo['txFee'], txInfo['nonce'])
             count += 1
-        
-    print('Inserted ' + str(count) + ' transaction records successfully!')
+     
+    if UntilBlock.objects.getOne()[0].Number != endIndex:
+        UntilBlock.objects.updateOne(endIndex)
     
-def writeAccsToDB(web3Connector, currentBlockNum):
+        if count != 0:
+            print('[Transactions] Inserted ' + str(count) + ' transactions successfully from Block ' + str(startIndex) + ' to Block ' + str(endIndex) + '!')
+        else:
+            print('[Transactions] No transaction found from Block ' + str(startIndex) + ' to Block ' + str(endIndex) + '!')
+    else:
+        print('[Transactions] The latest transaction is already in the database!')
+    
+    print('[Transactions] Finish writing transactions to the database!')
+
+#@app.task(name = 'writeAccsToDB', base = QueueOnce, once = {'graceful': True})
+def writeAccsToDB():
+    print('[Accounts] Start writing accounts to the database!')
+    currentBlockNum = web3Connector.eth.blockNumber
     latestAddr = None
     count = 0
     
     if Accounts.objects.getLatestNRows(1):
         latestAddr = Accounts.objects.getLatestNRows(1)[0]
         
-    if latestAddr and latestAddr.UpdatedFromBlock < currentBlockNum:
+    if latestAddr:
         startIndex = latestAddr.UpdatedFromBlock
-    elif latestAddr == None:
-        startIndex = 1
     else:
-        startIndex = None
+        startIndex = 1
+    
+    if startIndex  <= currentBlockNum - 99:
+        endIndex = startIndex + 99
+    else:
+        endIndex = currentBlockNum
+    
+    for blockIndex in range(startIndex, endIndex + 1):
+        addresses = getAllAddressesFromBlock(web3Connector, blockIndex)
         
-    if startIndex != None:    
-        for blockIndex in range(startIndex, currentBlockNum + 1):
-            addresses = getAllAddressesFromBlock(web3Connector, blockIndex)
-        
-            for address in addresses:
-                accInfo = getAccInfo(web3Connector, address, blockIndex)
-                if Accounts.objects.getOne(address).count() == 0:          
-                    Accounts.objects.addOne(accInfo['address'], accInfo['balance'], accInfo['percentage'], accInfo['txNum'], accInfo['updatedTime'], accInfo['updatedFromBlock'])
-                else:
-                    Accounts.objects.updateOne(accInfo['address'], accInfo['balance'], accInfo['percentage'], accInfo['txNum'], accInfo['updatedTime'], accInfo['updatedFromBlock'])
+        for address in addresses:
+            accInfo = getAccInfo(web3Connector, address, blockIndex)
+            if Accounts.objects.getOne(address).count() == 0:          
+                Accounts.objects.addOne(accInfo['address'], accInfo['balance'], accInfo['percentage'], accInfo['updatedTime'], accInfo['updatedFromBlock'])
+                count += 1
+            elif Accounts.objects.getOne(address)[0]['UpdatedFromBlock'] != accInfo['updatedFromBlock']:
+                Accounts.objects.updateOne(accInfo['address'], accInfo['balance'], accInfo['updatedTime'], accInfo['updatedFromBlock'])
                 count += 1
         
+    if count != 0:
         balanceSum = Accounts.objects.getBalanceSum()
         Accounts.objects.updateAllPercent(balanceSum)
-        
-        print(balanceSum)
-        
-        print('Inserted or updated ' + str(count) + ' accounts successfully!')
-
-@app.task(name = 'writeDataToDB')
-def writeDataToDB():
-    web3Connector = Web3(Web3.HTTPProvider('http://localhost:8545'))
-    currentBlockNum = web3Connector.eth.blockNumber
     
-    writeBlocksToDB(web3Connector, currentBlockNum)
-    writeTxsToDB(web3Connector, currentBlockNum)
-    writeAccsToDB(web3Connector, currentBlockNum)
+        print('[Accounts] Inserted or updated ' + str(count) + ' accounts successfully from Block ' + str(startIndex) + ' to Block ' + str(endIndex) + '!')
+    else:
+        print('[Accounts] No account information needs updating!')
+    
+    print('[Accounts] Finish writing accounts to the database!')
+
+@app.task(name = 'writeDataToDB', base = QueueOnce, once = {'graceful': True})
+def writeDataToDB():
+    writeBlocksToDB()
+    writeTxsToDB()
+    writeAccsToDB()
     

@@ -9,7 +9,7 @@ from django.forms.models import model_to_dict
 import re
 import json
 import datetime
-        
+    
 def paginateList(request, anyList):
     pageSize = request.GET.get('pageSize')
     pageNum = request.GET.get('pageNum')
@@ -86,20 +86,21 @@ def respondTxDetail(request, txHash):
     
 def respondAccList(request):
     accounts = Accounts.objects.getAll()
-    totalNum, pageList = getSerializedList(request, accounts)
+    totalNum = len(accounts)
+    pageList = paginateList(request, accounts).object_list
+
     resParam = {'totalNum': totalNum, 'pageList': pageList}
     return JsonResponse(resParam)
 
 def respondAccDetail(request, address):
     accounts = Accounts.objects.getOne(address)
     if accounts.count() != 0:
-        #######################################
         transactions = Transactions.objects.getAllByAddr(address)
         if transactions.count() != 0:
             totalNum, pageList = getSerializedList(request, transactions)
-            resParam = {'acc': model_to_dict(accounts[0]), 'pageList': pageList}
+            resParam = {'acc': accounts[0], 'pageList': pageList}
         else:
-            resParam = {'acc': model_to_dict(accounts[0])}        
+            resParam = {'acc': accounts[0]}        
         return JsonResponse(resParam)
     else:
         return HttpResponse()
