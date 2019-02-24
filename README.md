@@ -30,9 +30,12 @@ python3.7 manage.py migrate
 celery -B -A NUChain worker -l info >> celery.log 2>&1 &
 ```
 5. start up uWSGI
-
-```uwsgi --ini uwsgi.ini```
-
+```
+uwsgi --ini uwsgi.ini
+```
 6. start up or reload Nginx
-
-```nginx``` or ```nginx -s reload```
+```
+nginx 
+or 
+nginx -s reload
+```
