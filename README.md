@@ -7,9 +7,9 @@
 - Redis (3.0.6)
 - Nginx (1.10.3)
 - Python (3.7.2) and Third Party Packages
-    - django
-    - celery
-    - celery_once
+	- django
+	- celery
+	- celery_once
 	- pymysql
 	- redis
 	- web3
