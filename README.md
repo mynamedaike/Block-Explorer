@@ -46,7 +46,6 @@ Then install the above packages using pip.
 pip3.7 install -U XXX
 ```
     
-
 ## Starting Up the Program
 
 1. Start up MySQL and Redis Service.
@@ -60,11 +59,11 @@ python3.7 manage.py migrate
 ```
 celery -B -A NUChain worker -l info >> celery.log 2>&1 &
 ```
-5. start up uWSGI.
+5. Start up uWSGI.
 ```
 uwsgi --ini uwsgi.ini
 ```
-6. start up or reload Nginx.
+6. Start up or reload Nginx.
 ```
 nginx 
 or 
