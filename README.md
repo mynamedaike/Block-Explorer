@@ -7,14 +7,14 @@
 - Redis (3.0.6)
 - Nginx (1.10.3)
 - Python (3.7.2) and Third Party Packages
-		- django
-		- celery
-		- celery_once
-		- pymysql
-		- redis
-		- web3
-		- django-cors-headers
-		- uwsgi
+    - django
+    - celery
+    - celery_once
+    - pymysql
+    - redis
+    - web3
+    - django-cors-headers
+    - uwsgi
 
 ## Starting Up the Program
 
