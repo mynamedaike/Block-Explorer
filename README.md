@@ -10,11 +10,11 @@
 	* django
 	* celery
 	* celery_once
-	* pymysql
-	* redis
-	* web3
-	* django-cors-headers
-	* uwsgi
+		* pymysql
+		* redis
+		* web3
+		* django-cors-headers
+		* uwsgi
 
 ## Starting Up the Program
 
