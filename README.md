@@ -21,7 +21,7 @@
 1. Start up MySQL and Redis Service.
 2. Create a database in MySQL using the name specified in the settings.py file.
 3. Generate a data migration file, and execute data migration.
-`python3.7 manage.py makemigrations`
+``python3.7 manage.py makemigrations``
 `python3.7 manage.py migrate`
 4. Start up Celery
 `celery -B -A NUChain worker -l info >> celery.log 2>&1 &`
