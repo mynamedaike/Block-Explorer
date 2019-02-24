@@ -1,4 +1,5 @@
-# Block Explorer
+# NUChain Explorer
+NUChain Explorer is a block explorer built on Vue.js and Python. 
 
 ## Dependencies
 
