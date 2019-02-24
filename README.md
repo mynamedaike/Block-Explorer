@@ -3,13 +3,39 @@ NUChain Explorer is a block explorer built on Vue.js and Python. It adopts the a
 
 Website: http://nuchain.pro
 
-## Dependencies
+## Dependencies Installation
 
-- Ubuntu (16.04.4 LTS)
-- MySQL (5.7.24)
-- Redis (3.0.6)
-- Nginx (1.10.3)
-- Python (3.7.2) and Third Party Packages
+- Ubuntu (>=16.04.4 LTS)
+- MySQL (>=5.7.24)
+```
+sudo apt-get install mysql-server
+```
+- Redis (>=3.0.6)
+```
+sudo apt-get install redis-server
+```
+- Nginx (>=1.10.3)
+```
+sudo apt-get install nginx
+```
+- Python (>=3.7.0)
+```
+sudo apt update
+sudo apt install software-properties-common
+sudo add-apt-repository ppa:deadsnakes/ppa
+sudo apt update
+sudo apt install python3.7
+```
+- Third Party Packages in Python
+1. Install pip first.
+```
+wget https://bootstrap.pypa.io/get-pip.py
+sudo python3.7 get-pip.py
+```
+2. Then install the following packages using pip.
+```
+pip3.7 install -U XXX
+```
     - django
     - celery
     - celery_once
@@ -28,15 +54,15 @@ Website: http://nuchain.pro
 python3.7 manage.py makemigrations
 python3.7 manage.py migrate
 ```
-4. Start up Celery
+4. Start up Celery.
 ```
 celery -B -A NUChain worker -l info >> celery.log 2>&1 &
 ```
-5. start up uWSGI
+5. start up uWSGI.
 ```
 uwsgi --ini uwsgi.ini
 ```
-6. start up or reload Nginx
+6. start up or reload Nginx.
 ```
 nginx 
 or 
