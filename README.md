@@ -3,7 +3,7 @@ NUChain Explorer is a block explorer built on Vue.js and Python. It adopts the a
 
 Website: http://nuchain.pro
 
-## Dependencies Installation
+## Install the Dependencies
 
 - Ubuntu (>=16.04.4 LTS)
 - MySQL (>=5.7.24)
@@ -18,13 +18,17 @@ sudo apt-get install redis-server
 ```
 sudo apt-get install nginx
 ```
+- C compiler
+```
+sudo apt-get install build-essential
+```
 - Python (>=3.7.0)
 ```
-sudo apt update
-sudo apt install software-properties-common
+sudo apt-get update
+sudo apt-get install software-properties-common
 sudo add-apt-repository ppa:deadsnakes/ppa
-sudo apt update
-sudo apt install python3.7
+sudo apt-get update
+sudo apt-get install python3.7
 ```
 - Third Party Packages in Python
     - django
@@ -43,10 +47,10 @@ sudo python3.7 get-pip.py
 ```
 Then install the above packages using pip.
 ```
-pip3.7 install -U XXX
+sudo pip3.7 install -U XXX
 ```
     
-## Starting Up the Program
+## Start up the Program
 
 1. Start up MySQL and Redis Service.
 2. Create a database in MySQL using the name specified in the settings.py file.
@@ -65,7 +69,7 @@ uwsgi --ini uwsgi.ini
 ```
 6. Start up or reload Nginx.
 ```
-nginx 
+sudo nginx 
 or 
-nginx -s reload
+sudo nginx -s reload
 ```
