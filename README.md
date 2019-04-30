@@ -31,7 +31,7 @@ sudo apt-get install python3.7
 sudo apt-get install python3.7-dev
 ```
 - Third Party Packages in Python
-    - django
+    - django 2.1.7
     - celery
     - celery_once
     - pymysql
