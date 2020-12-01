@@ -1,7 +1,7 @@
 # NUChain Explorer
 NUChain Explorer is a block explorer built on Vue.js and Python. It adopts the architecture separating frontend from backend with a REST interface in between. This repository is for the backend part.
 
-Website: http://nuchain.pro
+Website: http://3.135.231.135
 
 ## Install the Dependencies
 
